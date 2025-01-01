@@ -15,7 +15,7 @@ public:
     // 默认升序排序
     virtual void sort(bool reverse = false)
     {
-        introsort(data.begin(), data.end(), 2 * log2(data.size()), reverse);
+        introsort(data.data(), data.data() + data.size(), 2 * log2(data.size()), reverse);
     }
 
     int get(int index) const
@@ -29,18 +29,20 @@ public:
     virtual ~Sort() = default;
 
 protected:
-    template <typename RandomIt>
-    void introsort(RandomIt first, RandomIt last, int depth_limit, bool reverse)
+    void introsort(int* first, int* last, int depth_limit, bool reverse)
     {
         while (last - first > 16) {
             if (depth_limit == 0) {
-                heapsort(first, last, reverse);  // 超过递归深度限制时使用堆排序
+                heapsort(first, last, reverse);
                 return;
             }
+
             --depth_limit;
-            RandomIt pivot = median_of_three(first, first + (last - first) / 2, last - 1, reverse);
+            int* pivot = median_of_three(first, first + (last - first) / 2, last - 1, reverse);
             pivot = partition(first, last, *pivot, reverse);
-            if (pivot - first < last - pivot) {  // 优先排序较小的区间
+
+            // 优先排序较小的区间，减少递归深度
+            if (pivot - first < last - pivot) {
                 introsort(first, pivot, depth_limit, reverse);
                 first = pivot + 1;
             } else {
@@ -48,34 +50,27 @@ protected:
                 last = pivot;
             }
         }
-        insertion_sort(first, last, reverse);  // 小区间使用插入排序
+        insertion_sort(first, last, reverse);
     }
 
-    // 插入排序
-    template <typename RandomIt>
-    void insertion_sort(RandomIt first, RandomIt last, bool reverse)
+    void insertion_sort(int* first, int* last, bool reverse)
     {
-        for (RandomIt i = first + 1; i < last; ++i) {
-            auto key = *i;
-            RandomIt pos = i;
-            while (pos > first && (reverse ? *(pos - 1) < key : *(pos - 1) > key)) {
-                *pos = *(pos - 1);
-                --pos;
-            }
-            *pos = key;
+        for (int* i = first + 1; i < last; ++i) {
+            int key = *i;
+            int* pos = reverse ? std::upper_bound(first, i, key, std::greater<int>())
+                               : std::upper_bound(first, i, key);
+            std::rotate(pos, i, i + 1);
         }
     }
 
-    // 堆排序实现
-    template <typename RandomIt>
-    void heapify(RandomIt first, RandomIt last, RandomIt root, bool reverse)
+    void heapify(int* first, int* last, int* root, bool reverse)
     {
         auto cmp =
             reverse ? [](int a, int b) { return a < b; } : [](int a, int b) { return a > b; };
         while (true) {
-            RandomIt largest = root;
-            RandomIt left = first + 2 * (root - first) + 1;
-            RandomIt right = first + 2 * (root - first) + 2;
+            int* largest = root;
+            int* left = first + 2 * (root - first) + 1;
+            int* right = first + 2 * (root - first) + 2;
 
             if (left < last && cmp(*largest, *left)) {
                 largest = left;
@@ -92,32 +87,26 @@ protected:
         }
     }
 
-    template <typename RandomIt>
-    void heapsort(RandomIt first, RandomIt last, bool reverse)
+    void heapsort(int* first, int* last, bool reverse)
     {
-        for (RandomIt i = first + (last - first) / 2 - 1; i >= first; --i) {
+        for (int* i = first + (last - first) / 2 - 1; i >= first; --i) {
             heapify(first, last, i, reverse);
         }
-        for (RandomIt i = last - 1; i > first; --i) {
+        for (int* i = last - 1; i > first; --i) {
             std::swap(*first, *i);
             heapify(first, i, first, reverse);
         }
     }
 
-    // 快速排序分区操作
-    template <typename RandomIt, typename T>
-    RandomIt partition(RandomIt first, RandomIt last, T pivot, bool reverse)
+    int* partition(int* first, int* last, int pivot, bool reverse)
     {
-        RandomIt left = first;
-        RandomIt right = last - 1;
+        auto cmp =
+            reverse ? [](int a, int b) { return a > b; } : [](int a, int b) { return a < b; };
+        int* left = first;
+        int* right = last - 1;
         while (true) {
-            if (reverse) {
-                while (*left > pivot) ++left;
-                while (*right < pivot) --right;
-            } else {
-                while (*left < pivot) ++left;
-                while (*right > pivot) --right;
-            }
+            while (cmp(*left, pivot)) ++left;
+            while (cmp(pivot, *right)) --right;
             if (left >= right) return right;
             std::swap(*left, *right);
             ++left;
@@ -125,43 +114,12 @@ protected:
         }
     }
 
-    // 三点中值法选择枢轴
-    template <typename RandomIt>
-    RandomIt median_of_three(RandomIt a, RandomIt b, RandomIt c, bool reverse)
+    int* median_of_three(int* a, int* b, int* c, bool reverse)
     {
-        if (reverse) {
-            if (*a > *b) {
-                if (*b > *c)
-                    return b;
-                else if (*a > *c)
-                    return c;
-                else
-                    return a;
-            } else {
-                if (*a > *c)
-                    return a;
-                else if (*b > *c)
-                    return c;
-                else
-                    return b;
-            }
-        } else {
-            if (*a < *b) {
-                if (*b < *c)
-                    return b;
-                else if (*a < *c)
-                    return c;
-                else
-                    return a;
-            } else {
-                if (*a < *c)
-                    return a;
-                else if (*b < *c)
-                    return c;
-                else
-                    return b;
-            }
-        }
+        auto cmp =
+            reverse ? [](int a, int b) { return a > b; } : [](int a, int b) { return a < b; };
+        return cmp(*a, *b) ? (cmp(*b, *c) ? b : (cmp(*a, *c) ? c : a))
+                           : (cmp(*a, *c) ? a : (cmp(*b, *c) ? c : b));
     }
 };
 
@@ -184,7 +142,7 @@ public:
 
 // DO NOT modify any parts below this line
 
-void disp(Sort *s, int partial, int n)
+void disp(Sort* s, int partial, int n)
 {
     if (partial == 0) {
         for (int i = 0; i < n; i++) {
@@ -203,9 +161,9 @@ void disp(Sort *s, int partial, int n)
 
 // 以下程序会自动产生随机数组list，自动将list输入Sort对象和ExSort对象，
 // 并调用排序函数进行排序，以及进行打印，不需要进行更改
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
-    int *list;
+    int* list;
     int n = std::stoi(argv[1]);
     int partial_disp = std::stoi(argv[2]);
     int seed = std::stoi(argv[3]);
