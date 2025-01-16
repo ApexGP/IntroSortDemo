@@ -2,6 +2,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <stdexcept>
 #include <vector>
 
 class Sort
@@ -15,7 +16,8 @@ public:
     // 默认升序排序
     virtual void sort(bool reverse = false)
     {
-        introsort(data.data(), data.data() + data.size(), 2 * log2(data.size()), reverse);
+        introsort(data.data(), data.data() + data.size(), 2 * static_cast<int>(log2(data.size())),
+                  reverse);
     }
 
     int get(int index) const
