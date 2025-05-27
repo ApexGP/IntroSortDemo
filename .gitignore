@@ -3,4 +3,4 @@ bin/
 .vscode/
 *.sh
 *.log
-.cache
+.cache/
